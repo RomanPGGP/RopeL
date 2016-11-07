@@ -1,0 +1,357 @@
+PARSER_BEGIN(test)
+import java.io.*;
+import java.util.*;
+class test
+{	
+	static TabladeSimbolos tabla = new TabladeSimbolos();
+	static Cuadruplos TablaCuadruplos = new Cuadruplos();
+	static Avail Temporales = new Avail();
+	static Stack<String> PilaOpes = new Stack<String>();
+	static Stack<Integer> PilaOpdos = new Stack<Integer>();
+	static Stack<Integer> PilaSaltos = new Stack<Integer>();
+	public static void main(String[] args) throws ParseException
+	{
+		try
+		{
+			test analizador = new test(System.in);
+			analizador.Programa();
+			System.out.println("Se compilo");
+		}
+		catch(ParseException e)
+		{ 
+			System.out.println(e.getMessage());
+		}
+	}
+}
+PARSER_END(test)
+
+TOKEN:
+{
+	<PROGRAMA : "Programa"> {System.out.println("PROGRAMA ->"+image);}
+	| <FIN :"Fin de programa"> {System.out.println("FIN ->"+image);}
+	| <IF : "Si"> {System.out.println("IF ->"+image);}
+	| <ELSE : "Dlc"> {System.out.println("ELSE ->"+image);}
+	| <WHILE : "Repetir"> {System.out.println("WHILE ->"+image);}
+	| <VARIABLE: "Variable"> {System.out.println("VARIABLE ->"+image);}
+}
+
+TOKEN:
+{
+	<IPARENTESIS: "("> {System.out.println("IPARENTESIS ->"+image);}
+	| <DPARENTESIS: ")"> {System.out.println("DPARENTESIS ->"+image);}
+	| <ICORCHETE: "{"> {System.out.println("ICORCHETE ->"+image);}
+	| <DCORCHETE: "}"> {System.out.println("DCORCHETE ->"+image);}
+	| <IBRACKET: "["> {System.out.println("IBRACKET ->"+image);}
+	| <DBRACKET: "]"> {System.out.println("DBRAKET ->"+image);}
+	| <PUNTOCOMA: ";"> {System.out.println("PUNTOCOMA ->"+image);}
+	| <COMA: ","> {System.out.println("COMA ->"+image);}
+	| <DOSPUNTOS: ":"> {System.out.println("DOSPUNTOS ->"+image);}
+	| <MENOR: "<"> {System.out.println("MENOR ->"+image);}
+	| <MAYOR: ">"> {System.out.println("MAYOR ->"+image);}
+	| <IGUAL: "=="> {System.out.println("IGUAL ->"+image);}
+	| <MAYORIGUAL : ">="> {System.out.println("MAYORIGUAL ->"+image);}
+	| <MENORIGUAL : "<="> {System.out.println("MENORIGUAL ->"+image);}
+	| <AND: "and"> {System.out.println("AND ->"+image);}
+	| <OR: "or"> {System.out.println("OR ->"+image);}
+	| <NOT: "not"> {System.out.println("NOT ->"+image);}
+}
+
+TOKEN:
+{
+	<ASIGNACION: "="> {System.out.println("ASIGNACION ->"+image);}
+	| <SUMA: "+"> {System.out.println("SUMA ->"+image);}
+	| <RESTA: "-"> {System.out.println("RESTA ->"+image);}
+	| <MULTIPLICACION: "*"> {System.out.println("MULTIPLICACION ->"+image);}
+	| <DIVISION: "/"> {System.out.println("DIVISION ->"+image);}
+}
+
+TOKEN:
+{
+	<NUMERO: (["0"-"9"])+> {System.out.println("NUMERO ->"+image);}
+	|<IDENTIFICADOR: ["a"-"z","A"-"Z"](["a"-"z","A"-"Z","0"-"9","_"])*> {System.out.println("IDENTIFICADOR ->"+image);}
+}
+
+SKIP:
+{
+	" "|"\r\n"|"\t"
+}
+
+void Programa():
+{}
+{
+	<PROGRAMA>
+	DeclaracionVariables()
+	Sentencias()
+	<FIN><EOF>
+}
+
+void DeclaracionVariables():
+{
+	Token nom;
+	String h;
+}
+{
+	(
+		<VARIABLE><DOSPUNTOS>
+	
+		(
+			nom = <IDENTIFICADOR>
+			{
+			h = nom.toString();
+			tabla.Insertar(h);
+			}
+
+			(<COMA>)* 
+		)*
+
+	<PUNTOCOMA>
+	)*
+}
+
+void Sentencias():
+{
+	
+	Token Asignacion;
+	String AsigNom;
+	int dir;
+}
+{
+	(
+		SentenciaSi()
+		| SentenciaRepetir()
+		| (Asignacion = <IDENTIFICADOR><ASIGNACION>Expresion()<PUNTOCOMA>
+		{
+			if(PilaOpdos.size()>0)
+			{
+				AsigNom = Asignacion.toString();
+				dir = tabla.GetDireccion(AsigNom);
+				TablaCuadruplos.Insertar("=", new Integer(0), dir, PilaOpdos.pop());
+				System.out.println("IMPRIMIENDO CUADRUPLOS FINAL-----");
+				TablaCuadruplos.Imprimir();
+			}
+			
+
+		})
+	)*
+}
+void Expresion():
+{
+	Token Oper;
+	String OpNom;
+}
+{
+	Es()
+		(
+	    ( Oper = <MENOR>
+			{
+				OpNom = Oper.toString();
+				PilaOpes.push(OpNom);
+			}
+			| Oper = <MAYOR>
+			{
+				OpNom = Oper.toString();
+				PilaOpes.push(OpNom);
+			}
+			| Oper = <IGUAL>
+			{
+				OpNom = Oper.toString();
+				PilaOpes.push(OpNom);
+			}
+			|Oper = <MENORIGUAL>
+			{
+				OpNom = Oper.toString();
+				PilaOpes.push(OpNom);
+			}
+			|Oper = <MAYORIGUAL>
+			{
+				OpNom = Oper.toString();
+				PilaOpes.push(OpNom);
+			}
+			) 
+			Es()
+		 )*
+		 {	
+				if(PilaOpdos.size()>=2)
+				{
+					Integer aux1, aux2, DirTemp;
+					String Operacion;
+					aux1 = PilaOpdos.pop();
+					aux2 = PilaOpdos.pop();
+					Operacion = PilaOpes.pop();
+					DirTemp = Temporales.GetTemp();
+					PilaOpdos.push(DirTemp);
+					TablaCuadruplos.Insertar(Operacion,aux2,aux1, DirTemp);
+				}
+		}
+}
+
+void Es():
+{
+	Token Operador1;
+	String OpNombre1;
+}
+{
+	(Termino()
+		{	
+			if((PilaOpdos.size()>=2) && ((PilaOpes.peek() == "+")||(PilaOpes.peek() == "-")||(PilaOpes.peek() == "or")))
+			{
+				Integer aux1, aux2, DirTemp;
+				String Operacion;
+				aux1 = PilaOpdos.pop();
+				aux2 = PilaOpdos.pop();
+				Operacion = PilaOpes.pop();
+				DirTemp = Temporales.GetTemp();
+				PilaOpdos.push(DirTemp);
+				TablaCuadruplos.Insertar(Operacion,aux2,aux1, DirTemp);
+			}
+
+		}
+		(
+			Operador1 = <SUMA>
+			{
+				OpNombre1 = Operador1.toString();
+				PilaOpes.push(OpNombre1);
+			}
+			|
+			Operador1 = <RESTA>
+			{
+				OpNombre1 = Operador1.toString();
+				PilaOpes.push(OpNombre1);
+			}
+			|
+			Operador1 = <OR>
+			{
+				OpNombre1 = Operador1.toString();
+				PilaOpes.push(OpNombre1);
+			}
+		)*
+
+	)+
+}
+
+void Termino():
+{
+	Token Operador2;
+	String OpNombre;
+}
+{
+	(Factor()
+		{
+			if((PilaOpdos.size()>=2) && ((PilaOpes.peek() == "*")||(PilaOpes.peek() == "/")||(PilaOpes.peek() == "and")))
+			{
+				Integer aux1, aux2, DirTemp;
+				String Operacion;
+				aux1 = PilaOpdos.pop();
+				aux2 = PilaOpdos.pop();
+				Operacion = PilaOpes.pop();
+				DirTemp = Temporales.GetTemp();
+				PilaOpdos.push(DirTemp);
+				TablaCuadruplos.Insertar(Operacion,aux2,aux1, DirTemp);
+			}
+		}
+		(
+			Operador2 = <MULTIPLICACION>
+			{
+				OpNombre = Operador2.toString();
+				PilaOpes.push(OpNombre);
+			}
+			|
+			Operador2 = <DIVISION>
+			{
+				OpNombre = Operador2.toString();
+				PilaOpes.push(OpNombre);
+			}
+			|
+			Operador2 = <AND>
+			{
+				OpNombre = Operador2.toString();
+				PilaOpes.push(OpNombre);
+			}
+		)*
+
+	)+
+}
+
+void Factor():
+{
+	Token NombreVar;
+	String NombrePila;
+}
+{
+	(<NOT>)* (
+				(
+				
+					NombreVar = <IDENTIFICADOR>
+					{
+					NombrePila = NombreVar.toString();
+					PilaOpdos.push(tabla.GetDireccion(NombrePila));
+					} 
+
+					(<IBRACKET>Expresion()<DBRACKET>)* 
+
+				)
+
+				|<IPARENTESIS>Expresion()<DPARENTESIS>
+			)
+}
+
+void SentenciaSi():
+{}
+{
+		<IF><IPARENTESIS>Expresion()<DPARENTESIS>
+		{
+			Integer aux0;
+			String Ope = "gotoF";
+			aux0 = PilaOpdos.pop();
+			TablaCuadruplos.Insertar(Ope,aux0, 0, 0);
+			PilaSaltos.push(TablaCuadruplos.GetCont());
+		}
+
+		<ICORCHETE>Sentencias()<DCORCHETE>(<ELSE>
+		{
+			Integer aux;
+			String Oper = "goto";
+			aux = PilaSaltos.pop();
+			TablaCuadruplos.Insertar(Oper,0,0, 0);
+			PilaSaltos.push(TablaCuadruplos.GetCont());
+			TablaCuadruplos.Rellena(aux, TablaCuadruplos.GetCont());
+
+		}
+		(<IPARENTESIS>Expresion()<DPARENTESIS>)*<ICORCHETE>Sentencias()<DCORCHETE>
+		{
+			Integer dir;
+			dir = PilaSaltos.pop();
+			TablaCuadruplos.Rellena(dir, TablaCuadruplos.GetCont());
+			TablaCuadruplos.Imprimir();
+
+		})*
+}
+
+void SentenciaRepetir():
+{}
+{
+		<WHILE>
+		{
+		   PilaSaltos.push(TablaCuadruplos.GetCont()+1);
+		}
+		<IPARENTESIS>Expresion()<DPARENTESIS>
+		{
+
+			Integer res;
+			String Opron = "gotoF"; 
+			res = PilaOpdos.pop();
+			TablaCuadruplos.Insertar(Opron, res, 0, 0);
+			PilaSaltos.push(TablaCuadruplos.GetCont());
+		}
+		<ICORCHETE>Sentencias()<DCORCHETE>
+		{
+			Integer dir1, dir2;
+			dir1 = PilaSaltos.pop();
+			dir2 = PilaSaltos.pop();
+			TablaCuadruplos.Insertar("goto", 0, 0, dir2);
+			TablaCuadruplos.Rellena(dir1, TablaCuadruplos.GetCont());
+			System.out.println("CUADRUPLOS WHILE");
+			TablaCuadruplos.Imprimir();
+
+		}
+}
