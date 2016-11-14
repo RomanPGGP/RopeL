@@ -9,6 +9,7 @@ class test
 	static Stack<String> PilaOpes = new Stack<String>();
 	static Stack<Integer> PilaOpdos = new Stack<Integer>();
 	static Stack<Integer> PilaSaltos = new Stack<Integer>();
+	static Integer base = 0;
 	public static void main(String[] args) throws ParseException
 	{
 		try
@@ -87,8 +88,10 @@ void Programa():
 
 void DeclaracionVariables():
 {
-	Token nom;
-	String h;
+	Token nom, num;
+	String h, n;
+	Integer f = 0, l = 1, numaux = 0, size;
+	Simbolo s;
 }
 {
 	(
@@ -97,11 +100,67 @@ void DeclaracionVariables():
 		(
 			nom = <IDENTIFICADOR>
 			{
-			h = nom.toString();
-			tabla.Insertar(h);
+				h = nom.toString();
+				tabla.Insertar(h, null);
+				DatosVar nvd = new DatosVar();
+				s = tabla.BuscarVD(h, nvd);
 			}
+			(<IBRACKET>
+			{
+				DatosVar nnvd;
+				s = tabla.BuscarVDD(h);
+				nnvd = s.vardim;
 
-			(<COMA>)* 
+				if(f==0)
+				{
+					tabla.BuscarVD(h, nnvd);
+				}
+				f++;
+			}
+			num = <NUMERO>
+			{ 
+				DatosVar nnnvd;
+				s = tabla.BuscarVDD(h);
+				nnnvd = s.vardim;
+
+			    char[] numero = new char[12];
+				n = num.toString();
+				size = n.length();
+				numero = n.toCharArray(); 
+				Integer orden = 1, previo = 0;
+				for(int i=size-1; i >= 0; i--)
+				{ 
+					previo = numero[i] - 48;
+					previo = previo * orden;
+					numaux += previo;
+					orden *= 10;
+				}
+				l = l*numaux;
+				nnnvd.Insertar(numaux, 0);
+				numaux = 0;
+			}
+			<DBRACKET>
+			{
+				DatosVar nnnnvd;
+				s = tabla.BuscarVDD(h);
+				nnnnvd = s.vardim;
+				nnnnvd.Rellenar(l, base);
+				s.vardim.Imprimir();
+			}
+			)*
+
+			(<COMA>
+			{
+				if(f > 0)
+				{
+					base += l;
+					f = 0;
+					l = 1;
+				}
+				
+			}
+			)* 
+
 		)*
 
 	<PUNTOCOMA>
@@ -122,12 +181,15 @@ void Sentencias():
 		| (Asignacion = <IDENTIFICADOR><ASIGNACION>Expresion()<PUNTOCOMA>
 		{
 			if(PilaOpdos.size()>0)
-			{
+			{   int aux;
 				AsigNom = Asignacion.toString();
 				dir = tabla.GetDireccion(AsigNom);
-				TablaCuadruplos.Insertar("=", new Integer(0), dir, PilaOpdos.pop());
-				System.out.println("IMPRIMIENDO CUADRUPLOS FINAL-----");
-				TablaCuadruplos.Imprimir();
+				aux =  PilaOpdos.pop();
+				TablaCuadruplos.Insertar("=", new Integer(0), dir, aux);
+				if (aux >= 100)
+				{
+					Temporales.Retrieve(aux);
+				}
 			}
 			
 
@@ -181,6 +243,14 @@ void Expresion():
 					DirTemp = Temporales.GetTemp();
 					PilaOpdos.push(DirTemp);
 					TablaCuadruplos.Insertar(Operacion,aux2,aux1, DirTemp);
+					if (aux2 >= 100)
+					{
+						Temporales.Retrieve(aux2);
+					}
+					else if(aux1 >= 100)
+					{
+						Temporales.Retrieve(aux1);
+					}
 				}
 		}
 }
@@ -203,6 +273,14 @@ void Es():
 				DirTemp = Temporales.GetTemp();
 				PilaOpdos.push(DirTemp);
 				TablaCuadruplos.Insertar(Operacion,aux2,aux1, DirTemp);
+				if (aux2 >= 100)
+				{
+					Temporales.Retrieve(aux2);
+				}
+				else if(aux1 >= 100)
+				{
+					Temporales.Retrieve(aux1);
+				}
 			}
 
 		}
@@ -247,6 +325,14 @@ void Termino():
 				DirTemp = Temporales.GetTemp();
 				PilaOpdos.push(DirTemp);
 				TablaCuadruplos.Insertar(Operacion,aux2,aux1, DirTemp);
+				if (aux2 >= 100)
+				{
+					Temporales.Retrieve(aux2);
+				}
+				else if(aux1 >= 100)
+				{
+					Temporales.Retrieve(aux1);
+				}
 			}
 		}
 		(
@@ -291,7 +377,14 @@ void Factor():
 
 				)
 
-				|<IPARENTESIS>Expresion()<DPARENTESIS>
+				|<IPARENTESIS>
+				{
+					PilaOpes.push("(");
+				}
+				Expresion()<DPARENTESIS>
+				{
+					PilaOpes.pop();
+				}
 			)
 }
 
@@ -350,8 +443,7 @@ void SentenciaRepetir():
 			dir2 = PilaSaltos.pop();
 			TablaCuadruplos.Insertar("goto", 0, 0, dir2);
 			TablaCuadruplos.Rellena(dir1, TablaCuadruplos.GetCont());
-			System.out.println("CUADRUPLOS WHILE");
-			TablaCuadruplos.Imprimir();
+			
 
 		}
 }
